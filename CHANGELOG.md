@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.3 (2026-09-08)
+
+修复：加载插件报 `cannot get property "connection" without inject`，Failed to load plugins。
+
+- **客户端**：apply 的激活日志对象里读取了未注入的 `ctx.connection`
+  （cordis ctx 是代理，访问未在 `exports.inject` 声明的服务名会直接抛错）→ 删除该读取。
+- **Node 半身**：`inject` 误含 `'connection'`（host 侧不存在名为 connection 的服务）
+  → 收敛为 `['webServer']`，与 dsh-multi-tenant 等 Node 插件一致。
+- 审计两个半身全部 `ctx.*` 访问：客户端只剩注入的 `slots/sessions` 与基座
+  `effect`；Node 侧只剩 `get/logger/on/provide` 与注入的 `webServer`。
+- 新增 Node 半身 apply 冒烟测试（fake host ctx）：缺 sessions 服务也能启动、
+  挂载 /memory-view 路由、GET 健康说明、POST RPC 协议（+5，共 26 项全绿）。
+
 ## v0.1.2 (2026-09-08)
 
 修复：点击后仍不显示 / 需切换对话才显示 / 一直“正在加载”。

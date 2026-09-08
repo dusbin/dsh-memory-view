@@ -11,6 +11,7 @@ import { zstdCompressSync, zstdDecompressSync, constants } from 'node:zlib'
 import {
   scanZstdFrames,
   decodeSessionLogFile,
+  decodeSessionLogTail,
   normalizeEvent,
   countEventTypes,
   messageText,
@@ -56,6 +57,37 @@ function decodeSessionLogFileFromBuffer(buf) {
   const events = text.split('\n').filter(Boolean).map((l) => JSON.parse(l))
   return { events, error: null }
 }
+
+test('decodeSessionLogTail: 只解尾部帧、事件顺序保持、封顶截断标记', () => {
+  const root = tmpRoot()
+  const path = join(root, 't.zstd')
+  // 三帧：f1 含 seq 1-2，f2 含 seq 3-4，f3 含 seq 5-6
+  const lines = (start) => [
+    `{"type":"user/message","seq":${start},"time":"${start}","data":{"content":"u${start}"}}`,
+    `{"type":"assistant/message","seq":${start + 1},"time":"${start + 1}","data":{"message":{"content":[{"type":"text","text":"a${start + 1}"}]}}}`,
+  ]
+  writeFileSync(path, makeSessionLog([lines(1), lines(3), lines(5)]))
+
+  // 全部解（maxFrames 足够）→ 6 条、不截断
+  const full = decodeSessionLogTail(path, { maxFrames: 100, maxEvents: 100 })
+  assert.equal(full.error, null)
+  assert.equal(full.events.length, 6)
+  assert.equal(full.truncated, false)
+  assert.equal(full.events[0].seq, 1)
+  assert.equal(full.events[5].seq, 6)
+
+  // 只解最后一帧 → 2 条（seq 5,6）、截断
+  const one = decodeSessionLogTail(path, { maxFrames: 1, maxEvents: 100 })
+  assert.equal(one.events.length, 2)
+  assert.equal(one.truncated, true)
+  assert.equal(one.events[0].seq, 5)
+
+  // 事件数封顶 → 截断标记为 true
+  const capped = decodeSessionLogTail(path, { maxFrames: 100, maxEvents: 2 })
+  assert.ok(capped.truncated)
+  assert.ok(capped.events.length >= 2)
+  rmSync(root, { recursive: true, force: true })
+})
 
 test('decodeSessionLogFile: 文件不存在 / 坏 magic 返回 error 而非抛错', () => {
   const root = tmpRoot()

@@ -41,7 +41,7 @@ test('factory 可加载并导出插件体', () => {
   const result = captured.factory((id) => fakeRequire(id))
   assert.ok(result)
   assert.equal(result.name, 'dsh-memory-view')
-  assert.deepEqual(result.inject, ['slots', 'sessions', 'connection'])
+  assert.deepEqual(result.inject, ['slots', 'sessions'])
   assert.equal(typeof result.apply, 'function')
   assert.ok(result.pure)
   assert.ok(result.DEFAULTS)

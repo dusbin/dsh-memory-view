@@ -1,0 +1,45 @@
+{
+  "name": "dsh-memory-view",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness 记忆查看插件（Web 端 + Node 半身）：把 DSH 真实运行状态投影为短期记忆 / 工作记忆 / 长期记忆 / 过程与语义记忆四层视图，随时查看 agent 记得什么、在做什么、可调用什么。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "keywords": [
+    "deepseek-harness",
+    "plugin",
+    "web",
+    "memory",
+    "short-term",
+    "working-memory",
+    "long-term",
+    "procedural",
+    "semantic",
+    "记忆查看"
+  ]
+}

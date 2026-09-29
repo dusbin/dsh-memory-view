@@ -3,3 +3,4 @@ node_modules/
 *.log
 index-dump/
 test/.tmp-home-*/
+test/.tmp-instr-*/

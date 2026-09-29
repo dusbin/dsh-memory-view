@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.2.0 (2026-09-08)
+
+新功能：**AGENTS.md / CLAUDE.md 指令文件查看与编辑**（面板第 5 个页签）。
+
+- 发现规则与 `@deepseek-ai/dsh-agent-instructions` 对齐：`$DSH_HOME/AGENTS.md`
+  （用户全局，无 overlay）→ 项目根（含 `projectRootMarkers`，默认 `.git`）逐级到
+  会话 cwd；每级先基础候选 `AGENTS.md`/`CLAUDE.md`，再本地 overlay
+  `AGENTS.local.md`/`CLAUDE.local.md`（由宽泛到具体）。
+- 侧栏按 scope 分组列出候选文件（存在/缺失、大小、local 标记），点选即读；
+  缺失文件以“新建”模式打开，保存即创建。
+- 编辑器：等宽 textarea、字节数、未保存标记、`Cmd/Ctrl+S` 保存、⟲ 重新加载；
+  保存成功显示大小与备份路径。
+- **安全性**：只允许写发现链内的候选文件名（越权路径 → `forbidden`）；写入原子
+  （同目录临时文件 + rename）；覆盖前默认备份到 `$DSH_HOME/memory-view-backups/`；
+  单文件读写上限（`maxSourceBytes`/`maxWriteBytes`）；带 `expectedMtimeMs` 的
+  乐观并发校验，磁盘被改动时返回 `conflict` 并提示先重新加载。
+- RPC 新增 `instructionsList` / `instructionsRead` / `instructionsWrite`；
+  `safeDispatch` 起透传业务错误码（forbidden/conflict/too-large/not-found/io）。
+
+同时加固（避免插件影响宿主界面）：
+
+- **客户端加 ErrorBoundary**：插件渲染异常只显示一行错误，绝不冒泡导致宿主 React
+  整树卸载（避免“整个界面卡死/空白”）。
+- 自动刷新默认 10s，且**当前会话运行中自动跳过**（不给 agent 回合添负载）；
+  服务端投影缓存 5s、知识库/技能扫描缓存 30s，降低重复扫盘。
+- 测试：+8（instructions 发现/读取/写入/冲突/越权/RPC 门面），共 34 项全绿。
+
 ## v0.1.3 (2026-09-08)
 
 修复：加载插件报 `cannot get property "connection" without inject`，Failed to load plugins。

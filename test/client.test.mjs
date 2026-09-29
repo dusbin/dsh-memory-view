@@ -29,7 +29,14 @@ assert.ok(captured, 'module loader entry captured')
 assert.equal(captured.id, 'dsh-memory-view')
 
 function fakeRequire(id) {
-  if (id === 'react') return { createElement: (...a) => a, useSyncExternalStore: () => ({}) }
+  if (id === 'react') {
+    return {
+      createElement: (...a) => a,
+      useSyncExternalStore: () => ({}),
+      Component: class { constructor(props) { this.props = props } },
+      Fragment: 'Fragment',
+    }
+  }
   if (id === 'react-dom') return { createPortal: (node) => node }
   return {}
 }

@@ -13,14 +13,38 @@
 > 本插件的「记忆分层」是**展示性认知隐喻**（详情见 [docs/MODEL.md](docs/MODEL.md)），每一处都标注了
 > 「来自哪个真实字段 / 文件」。只读，不改写任何 DSH 状态。
 
-**当前版本：v0.1.0**（变更记录见 [CHANGELOG.md](CHANGELOG.md)）
+**当前版本：v0.2.0**（变更记录见 [CHANGELOG.md](CHANGELOG.md)）
 
 ## 效果
 
 - 会话标题栏右上角出现 **「🧠 记忆」** 按钮；
-- 点击打开右侧全高抽屉面板，四个页签：**短期 / 工作 / 长期 / 过程语义**；
-- 打开后自动跟随当前会话；切换会话自动重载；可手动 ⟳ 刷新或勾选自动刷新（默认 6s）；
+- 点击打开右侧全高抽屉面板，五个页签：**短期 / 工作 / 长期 / 过程语义 / AGENTS.md 指令**；
+- 打开后自动跟随当前会话；切换会话自动重载；可手动 ⟳ 刷新或勾选自动刷新
+  （默认 10s，且**当前会话运行中自动跳过**，不给 agent 回合添负载）；
 - 顶部 chips 显示来源（实时投影 + 磁盘档案）与全局统计（磁盘会话数 / 投影会话数 / 知识文档 / 技能数）。
+
+## AGENTS.md 指令查看与编辑（第五个页签）
+
+发现规则与 DSH 自身（`@deepseek-ai/dsh-agent-instructions`）完全一致，所以**看到的就是 agent
+实际加载的那些文件**：
+
+1. `$DSH_HOME/AGENTS.md`（用户全局，无 overlay）；
+2. 项目 scope：从项目根（含 `projectRootMarkers`，默认 `.git` 的最近祖先目录）逐级到会话 cwd，
+   每级先基础候选 `AGENTS.md` / `CLAUDE.md`，再本地 overlay `AGENTS.local.md` / `CLAUDE.local.md`
+   —— 顺序即“由宽泛到具体”的优先级。
+
+界面：左侧按 scope 分组列出候选文件（存在/缺失、大小、`local` 标记），点选即读；缺失文件以
+**新建**模式打开，保存即创建。右侧编辑器为等宽文本框，带字节数、未保存标记、`Cmd/Ctrl+S` 保存、
+⟲ 重新加载；保存成功显示大小与备份路径。
+
+**写入安全约束**（重要）：
+
+- 只允许写**发现链内**的候选文件名，其他路径一律 `forbidden`；
+- 写入是**原子**的（同目录临时文件 + rename）；
+- 覆盖已有文件前默认**自动备份**到 `$DSH_HOME/memory-view-backups/<name>.<时间戳>.bak`；
+- 单文件读写上限 `maxSourceBytes` / `maxWriteBytes`；
+- 带 `expectedMtimeMs` 的**乐观并发校验**：磁盘上文件被别人改过时返回 `conflict`，
+  界面提示先「重新加载」再保存。
 
 ## 目录结构
 
@@ -32,11 +56,12 @@ dsh-memory-view/                # ← git 仓库根
 │   ├── client.js               # 浏览器 bundle：标题栏按钮 + 记忆面板（手写、零构建）
 │   └── host/
 │       ├── collectors.mjs      # zstd 会话日志解码 / 磁盘枚举 / KB / 技能收集（纯 Node）
+│       ├── instructions.mjs    # AGENTS.md 发现 / 读取 / 原子写入（含安全约束）
 │       └── service.mjs         # 四层快照服务核心（框架无关，可单测）
 ├── docs/
 │   ├── MODEL.md                # 记忆模型映射说明
 │   └── research/               # DSH 客户端插件框架调研报告
-├── test/                       # node --test：collectors / service / client 纯函数（20 项断言）
+├── test/                       # node --test：collectors / service / instructions / client（34 项断言）
 ├── README.md
 └── CHANGELOG.md
 ```
@@ -64,9 +89,20 @@ ln -sfn /Users/robinddu/Desktop/workspace/robinddu/dsh-memory-view \
           - '/Users/robinddu/Desktop/workspace/robinddu/poetry-skill'
         # kbIndexJson: ''       # knowledge-base 语义索引 dump（index.json，可选项）
 
+        # ---- AGENTS.md 指令（第五个页签）----
+        instructions:
+          enabled: true
+          baseCandidates: ['AGENTS.md', 'CLAUDE.md']             # 项目 scope 基础候选
+          localCandidates: ['AGENTS.local.md', 'CLAUDE.local.md'] # 本地 overlay 候选
+          projectRootMarkers: ['.git']                            # 项目根标记
+          extraRoots: []                                          # 额外允许查看/编辑的根目录
+          maxSourceBytes: 1048576                                 # 单文件读取上限
+          maxWriteBytes: 262144                                   # 单次写入上限
+          backup: true                                            # 覆盖前备份到 $DSH_HOME/memory-view-backups
+
         # ---- 浏览器面板 ----
-        defaultTab: 'shortTerm' # shortTerm | working | longTerm | proceduralSemantic
-        autoRefreshMs: 6000     # 面板打开时自动刷新间隔；0 = 关闭
+        defaultTab: 'shortTerm' # shortTerm | working | longTerm | proceduralSemantic | instructions
+        autoRefreshMs: 10000    # 面板打开时自动刷新间隔；0 = 关闭（会话运行中自动暂停）
         drawerWidth: 860        # 抽屉宽度 px
         debug: false
 ```
